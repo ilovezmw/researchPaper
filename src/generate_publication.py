@@ -59,6 +59,17 @@ def resolve_published_dir(root: Path) -> Path:
     return caps
 
 
+def resolve_topic_output_dir(published_root: Path, topic_dir: Path) -> Path:
+    """
+    Mirror the topic folder name under Published/.
+    Example:
+      In Process/My Topic -> Published/My Topic/
+    """
+    out = published_root / topic_dir.name
+    out.mkdir(parents=True, exist_ok=True)
+    return out
+
+
 def _docx_plain_text(docx_path: Path) -> str:
     with zipfile.ZipFile(docx_path) as zf:
         xml = zf.read("word/document.xml")
@@ -406,6 +417,55 @@ def mark_done(topic_dir: Path) -> None:
     )
 
 
+def generate_one_topic(
+    *,
+    root: Path,
+    topic_dir: Path,
+    output_stem_override: str | None,
+    export_pdf: bool,
+    mark_done_file: bool,
+) -> int:
+    manuscript = topic_dir / "manuscript.yaml"
+    if not manuscript.is_file():
+        print(f"Missing manuscript.yaml in {topic_dir}", file=sys.stderr)
+        return 2
+
+    data = load_yaml(manuscript)
+    doc = build_document(data)
+    published_root = resolve_published_dir(root)
+    topic_output_dir = resolve_topic_output_dir(published_root, topic_dir)
+
+    if output_stem_override:
+        base = _slug(output_stem_override)
+    else:
+        yaml_stem = data.get("output_stem")
+        if yaml_stem:
+            base = _slug(str(yaml_stem))
+        else:
+            title_slug = _slug(str(data.get("title") if not isinstance(data.get("title"), list) else data["title"][0]))
+            base = f"{title_slug}_{data.get('date', '').replace(' ', '_')}"
+    docx_name = f"{base}.docx"
+    docx_path = (topic_output_dir / docx_name).resolve()
+
+    doc.save(str(docx_path))
+    print(f"Project root:  {root.resolve()}")
+    print(f"Manuscript:      {manuscript.resolve()}")
+    print(f"Wrote DOCX:      {docx_path}")
+    for msg in verify_docx_against_yaml(docx_path, data):
+        print(f"WARNING: {msg}", file=sys.stderr)
+
+    if export_pdf:
+        pdf_path = (topic_output_dir / f"{base}.pdf").resolve()
+        export_pdf_word_win32(docx_path, pdf_path)
+        print(f"Wrote PDF:       {pdf_path}")
+
+    if mark_done_file:
+        mark_done(topic_dir)
+        print(f"Marked done: {topic_dir / 'Done.txt'}")
+
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate research note DOCX (and optional PDF) from manuscript.yaml")
     parser.add_argument("--input", "-i", required=True, help="Path to topic folder under In Process")
@@ -418,49 +478,50 @@ def main() -> int:
     )
     parser.add_argument("--pdf", action="store_true", help="Also export PDF via Microsoft Word (Windows)")
     parser.add_argument("--no-done", action="store_true", help="Do not write Done.txt in the topic folder")
+    parser.add_argument(
+        "--batch",
+        action="store_true",
+        help="Treat --input as a parent folder and process each immediate subfolder that contains manuscript.yaml",
+    )
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parent.parent
     topic_dir = (root / args.input).resolve() if not Path(args.input).is_absolute() else Path(args.input).resolve()
-    manuscript = topic_dir / "manuscript.yaml"
-    if not manuscript.is_file():
-        print(f"Missing manuscript.yaml in {topic_dir}", file=sys.stderr)
+    if not topic_dir.is_dir():
+        print(f"Input folder not found: {topic_dir}", file=sys.stderr)
         return 2
 
-    data = load_yaml(manuscript)
-    doc = build_document(data)
+    if args.batch:
+        topic_dirs = sorted(
+            [
+                p
+                for p in topic_dir.iterdir()
+                if p.is_dir() and (p / "manuscript.yaml").is_file()
+            ],
+            key=lambda p: p.name.lower(),
+        )
+        if not topic_dirs:
+            print(f"No topic subfolders with manuscript.yaml under {topic_dir}", file=sys.stderr)
+            return 2
+        for td in topic_dirs:
+            code = generate_one_topic(
+                root=root,
+                topic_dir=td,
+                output_stem_override=args.output_stem,
+                export_pdf=args.pdf,
+                mark_done_file=not args.no_done,
+            )
+            if code != 0:
+                return code
+        return 0
 
-    published = resolve_published_dir(root)
-
-    if args.output_stem:
-        base = _slug(args.output_stem)
-    else:
-        yaml_stem = data.get("output_stem")
-        if yaml_stem:
-            base = _slug(str(yaml_stem))
-        else:
-            title_slug = _slug(str(data.get("title") if not isinstance(data.get("title"), list) else data["title"][0]))
-            base = f"{title_slug}_{data.get('date', '').replace(' ', '_')}"
-    docx_name = f"{base}.docx"
-    docx_path = (published / docx_name).resolve()
-
-    doc.save(str(docx_path))
-    print(f"Project root:  {root.resolve()}")
-    print(f"Manuscript:      {manuscript.resolve()}")
-    print(f"Wrote DOCX:      {docx_path}")
-    for msg in verify_docx_against_yaml(docx_path, data):
-        print(f"WARNING: {msg}", file=sys.stderr)
-
-    if args.pdf:
-        pdf_path = (published / f"{base}.pdf").resolve()
-        export_pdf_word_win32(docx_path, pdf_path)
-        print(f"Wrote PDF:       {pdf_path}")
-
-    if not args.no_done:
-        mark_done(topic_dir)
-        print(f"Marked done: {topic_dir / 'Done.txt'}")
-
-    return 0
+    return generate_one_topic(
+        root=root,
+        topic_dir=topic_dir,
+        output_stem_override=args.output_stem,
+        export_pdf=args.pdf,
+        mark_done_file=not args.no_done,
+    )
 
 
 if __name__ == "__main__":

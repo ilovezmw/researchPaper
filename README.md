@@ -11,7 +11,12 @@ python src/generate_publication.py --input "In Process/sample_BTC_ETH_decoupling
 
 Run these commands from the **same folder that contains `src/`** (the project root you opened in Cursor). If the terminal `cd` points somewhere else, files go to that other copy’s `Published/` and you will not see them in the IDE.
 
-If two topic folders use the same `title` in YAML, the default `.docx` name collides and one overwrites the other. Use a distinct name:
+The export path now mirrors the topic folder name:
+
+- input: `In Process/<topic>/manuscript.yaml`
+- output: `Published/<topic>/<generated-file>.docx` (and optional PDF)
+
+If two topic folders use the same `title` in YAML, they no longer overwrite each other because each topic has its own output folder. You can still force a custom file name:
 
 ```powershell
 python src/generate_publication.py --input "In Process/Research Paper Generation Request" --output-stem "Research_Paper_Generation_Request_March_2026"
@@ -28,32 +33,31 @@ python src/generate_publication.py --input "In Process/Research Paper Generation
 
 (That importer matches the outline of `Research Paper Generation Request.docx`. If you change headings in Word, adjust slice logic in `src/docx_to_manuscript.py`.)
 
-Outputs are written under **`Published/`** (created automatically). After each run the tool checks that section headings from your YAML appear in the DOCX; if you see `WARNING` lines, close the file in Word and regenerate.
+Outputs are written under **`Published/<same-topic-name>/`** (created automatically). After each run the tool checks that section headings from your YAML appear in the DOCX; if you see `WARNING` lines, close the file in Word and regenerate.
 
 See `In Process/sample_BTC_ETH_decoupling/manuscript.yaml` for the YAML schema.
 
 ## Folder layout (recommended)
 
 - **`In Process/<课题文件夹>/`** — one folder per paper or work-in-progress. Put that paper’s `manuscript.yaml` **inside** that folder, plus any related `.docx` / PDFs you use while drafting.
-- **`Published/`** — generated `.docx` / `.pdf` from the script (output file name comes from the YAML title + date).
+- **`Published/<课题文件夹>/`** — generated `.docx` / `.pdf` from the script, mirrored by the same topic folder name as `In Process`.
 
 Do **not** merge two different topics into a single `manuscript.yaml` unless they are literally one combined document. Otherwise you lose a clean 1:1 mapping: *one topic folder → one manuscript → one export*.
 
-You **can** put **`In Process/manuscript.yaml` directly under `In Process`** (no subfolder) if you only ever work on one draft at a time. Then run:
+The script normally looks for **`manuscript.yaml` inside the path you pass to `--input`**.
+If you want to process all topic subfolders in one command, use `--batch`:
 
 ```powershell
-python src/generate_publication.py --input "In Process"
+python src/generate_publication.py --input "In Process" --batch
 ```
-
-The script always looks for **`manuscript.yaml` inside the path you pass to `--input`**, then writes to **`Published/`**.
 
 Examples:
 
-| What you pass to `--input` | Manuscript path used |
-|----------------------------|----------------------|
-| `In Process/sample_BTC_ETH_decoupling` | `In Process/sample_BTC_ETH_decoupling/manuscript.yaml` |
-| `In Process/Research Paper Generation Request` | `In Process/Research Paper Generation Request/manuscript.yaml` |
-| `In Process` | `In Process/manuscript.yaml` |
+| What you pass to `--input` | Manuscript path used | Output folder |
+|----------------------------|----------------------|---------------|
+| `In Process/sample_BTC_ETH_decoupling` | `In Process/sample_BTC_ETH_decoupling/manuscript.yaml` | `Published/sample_BTC_ETH_decoupling/` |
+| `In Process/Research Paper Generation Request` | `In Process/Research Paper Generation Request/manuscript.yaml` | `Published/Research Paper Generation Request/` |
+| `In Process` + `--batch` | every `In Process/<topic>/manuscript.yaml` | `Published/<topic>/` |
 
 ## Workflows
 
@@ -84,4 +88,4 @@ Alternatively: open the file in Word → **File → Save As → PDF** (same rend
 python src/generate_publication.py --input "In Process/my-topic" --pdf
 ```
 
-Word/PDF go under **`Published/`**.
+Word/PDF go under **`Published/<same-topic-name>/`**.
