@@ -1,0 +1,52 @@
+# Copy/edit per topic. Required: title, author, affiliation, location, date, abstract, sections.
+#
+# Tables: default layout is full_page — each table sits in a short single-column section so Word does not
+# split the table across the two columns. To force a small table inside the two-column text, set:
+#   layout: narrow
+# Optional root default: default_table_layout: narrow
+
+title:
+  - BTC–ETH Decoupling and the Rise of Ethereum as Productive Capital
+  - (2026–2027)
+author: Mingwei Zhang
+affiliation: Independent Researcher
+location: Singapore
+date: March 2026
+
+abstract: |
+  Historically, Bitcoin (BTC) and Ethereum (ETH) have exhibited strong positive correlation, often driven by shared liquidity
+  cycles and broad macro sentiment across digital assets. However, as market structure matures and Ethereum’s economic
+  profile becomes more differentiated, this long-standing relationship may weaken. This research note evaluates the possibility
+  of a partial BTC–ETH decoupling over the next 12–24 months using three lenses: rolling correlation, ETH/BTC relative-
+  strength behavior, and Ethereum’s transition toward productive digital capital.
+
+sections:
+  - heading: "1. Historical Correlation Structure"
+    paragraphs:
+      - >
+        For much of the modern crypto cycle, BTC and ETH returns moved in close alignment. Market commentary and
+        institutional research frequently described the pair as part of a single-beta crypto complex, particularly during 2017–2022
+        when both assets were dominated by the same liquidity regime and retail-risk appetite [1][2].
+    tables:
+      - caption: "Table 1. BTC–ETH Rolling Correlation Decoupling Framework"
+        headers: ["Indicator Type", "Rolling Window", "Interpretation", "Decoupling Trigger"]
+        rows:
+          - ["Short-term sensitivity", "20-day", "Detects fast shifts in co-movement", "< 0.20"]
+          - ["Medium-term confirmation", "60-day", "Filters short-lived noise", "< 0.30"]
+          - ["Long-term structural trend", "120-day", "Captures regime change", "< 0.40"]
+        note: "Table 1 summarizes the rolling-correlation framework used to assess whether BTC and ETH are moving from a shared-liquidity regime toward structurally differentiated behavior."
+
+  - heading: "2. ETH/BTC Relative Strength as a Pricing Mechanism"
+    paragraphs:
+      - >
+        The ETH/BTC exchange rate is the market’s direct pricing mechanism for the relative economic value of the two
+        networks. When ETH/BTC rises, the market is implicitly assigning greater value to Ethereum’s cash-flow-like,
+        utility-linked, or growth-linked characteristics relative to Bitcoin’s monetary narrative.
+
+# Optional override (defaults to standard disclosure matching your PDF)
+# ai_disclosure: |
+#   Custom text...
+
+references:
+  - '[1] "Price Correlation Between Major Cryptocurrencies and Memecoins (2019–2024)," Medium, accessed Mar. 6, 2026.'
+  - '[2] Coinbase Institutional, "Lower BTC vs ETH correlation," Weekly Market Commentary, accessed Mar. 6, 2026.'
