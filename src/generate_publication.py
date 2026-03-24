@@ -10,6 +10,8 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import yaml
@@ -22,18 +24,104 @@ from docx.shared import Inches, Pt
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.docx_layout import (  # noqa: E402
+    apply_document_defaults,
     configure_page,
+    polish_research_table,
     set_section_columns,
     set_table_rows_cant_split,
+    style_abstract_body,
     style_abstract_label,
     style_body,
     style_heading,
     style_meta_line,
     style_reference,
+    style_section_divider_heading,
     style_table_caption,
     style_table_note,
     style_title,
+    style_title_subline,
 )
+
+_W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+# Long single <w:t> runs can misbehave in some Word builds; chunk when adding body text.
+_RUN_TEXT_CHUNK = 240
+
+
+def resolve_published_dir(root: Path) -> Path:
+    """Prefer Published/ if it already exists (matches common Windows folder naming)."""
+    caps = root / "Published"
+    low = root / "published"
+    if caps.is_dir():
+        return caps
+    if low.is_dir():
+        return low
+    caps.mkdir(parents=True, exist_ok=True)
+    return caps
+
+
+def _docx_plain_text(docx_path: Path) -> str:
+    with zipfile.ZipFile(docx_path) as zf:
+        xml = zf.read("word/document.xml")
+    root = ET.fromstring(xml)
+    parts: list[str] = []
+    for t in root.iter(f"{{{_W_NS}}}t"):
+        if t.text:
+            parts.append(t.text)
+        if t.tail:
+            parts.append(t.tail)
+    return "".join(parts)
+
+
+def verify_docx_against_yaml(docx_path: Path, data: dict) -> list[str]:
+    """Post-save checks so obviously truncated exports are visible in the terminal."""
+    issues: list[str] = []
+    blob = _docx_plain_text(docx_path)
+    yaml_chars = sum(len(c) for c in _yaml_prose_paragraphs(data.get("abstract") or ""))
+    para_n = 0
+    for sec in data.get("sections") or []:
+        for p in sec.get("paragraphs") or []:
+            yaml_chars += sum(len(b) for b in _yaml_prose_paragraphs(str(p)))
+            para_n += 1
+    for sec in data.get("sections") or []:
+        h = sec.get("heading")
+        if h and str(h) not in blob:
+            issues.append(f'missing section heading in DOCX: "{h}"')
+    if yaml_chars >= 2500 and len(blob) < int(yaml_chars * 0.35):
+        issues.append(
+            f"DOCX text looks too short ({len(blob)} chars vs ~{yaml_chars} in YAML prose); "
+            "regenerate after saving manuscript.yaml or close the .docx in Word if it locked an old export."
+        )
+    return issues
+
+
+def _add_runs_chunked(paragraph, text: str) -> None:
+    t = str(text)
+    if not t:
+        return
+    for i in range(0, len(t), _RUN_TEXT_CHUNK):
+        paragraph.add_run(t[i : i + _RUN_TEXT_CHUNK])
+
+
+def _yaml_prose_paragraphs(text: str) -> list[str]:
+    """
+    YAML | block scalars keep newline characters; editors often break lines mid-sentence.
+    - Split on blank lines for real paragraph breaks.
+    - Within each chunk, join wrapped lines with a single space (fixes 'liquidity' + 'cycles' glue).
+    - Collapse accidental multiple spaces.
+    """
+    raw = (text or "").strip()
+    if not raw:
+        return []
+    out: list[str] = []
+    for chunk in re.split(r"\n\s*\n", raw):
+        lines = [ln.strip() for ln in chunk.splitlines() if ln.strip()]
+        if not lines:
+            continue
+        merged = " ".join(lines)
+        merged = re.sub(r" +", " ", merged).strip()
+        out.append(merged)
+    return out
+
 
 DEFAULT_AI_DISCLOSURE = (
     "Portions of this research note were developed with the assistance of AI-based analytical and editorial tools to "
@@ -83,7 +171,7 @@ def _add_data_table(
     rows: list[list[str]],
     col_width_in: float | None,
     *,
-    font_pt: int = 8,
+    font_pt: int = 9,
 ) -> None:
     ncols = len(headers)
     table = document.add_table(rows=1 + len(rows), cols=ncols)
@@ -101,6 +189,7 @@ def _add_data_table(
         for row in table.rows:
             for cell in row.cells:
                 cell.width = w
+    polish_research_table(table)
 
 
 def _column_break_paragraph(document: Document) -> None:
@@ -141,12 +230,12 @@ def _emit_table_blocks(
                 headers,
                 rows,
                 tbl.get("col_width_in"),
-                font_pt=8,
+                font_pt=9,
             )
             note = tbl.get("note")
             if note:
                 p = document.add_paragraph()
-                p.add_run(str(note))
+                _add_runs_chunked(p, str(note))
                 style_table_note(p)
                 p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
             i += 1
@@ -178,12 +267,12 @@ def _emit_table_blocks(
                 headers,
                 rows,
                 t.get("col_width_in"),
-                font_pt=8,
+                font_pt=9,
             )
             note = t.get("note")
             if note:
                 p = document.add_paragraph()
-                p.add_run(str(note))
+                _add_runs_chunked(p, str(note))
                 style_table_note(p)
                 p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
         _append_continuous_section(document, 2)
@@ -192,6 +281,7 @@ def _emit_table_blocks(
 
 def build_document(data: dict) -> Document:
     document = Document()
+    apply_document_defaults(document)
 
     # --- Section 0: title block + abstract (single column) ---
     s0 = document.sections[0]
@@ -200,13 +290,16 @@ def build_document(data: dict) -> Document:
 
     title = data.get("title", "Untitled")
     title_lines = title if isinstance(title, list) else [title]
-    for line in title_lines:
+    for idx, line in enumerate(title_lines):
         p = document.add_paragraph()
         p.add_run(str(line))
-        style_title(p)
+        if idx == 0:
+            style_title(p)
+        else:
+            style_title_subline(p)
 
     meta = [
-        ("author", True),
+        ("author", False),
         ("affiliation", False),
         ("location", False),
         ("date", False),
@@ -219,18 +312,15 @@ def build_document(data: dict) -> Document:
         p.add_run(str(val))
         style_meta_line(p, bold=bold)
 
-    abstract = (data.get("abstract") or "").strip()
-    if abstract:
+    abstract_chunks = _yaml_prose_paragraphs(data.get("abstract") or "")
+    if abstract_chunks:
         p = document.add_paragraph()
         p.add_run("Abstract")
         style_abstract_label(p)
-        for block in abstract.split("\n\n"):
-            block = block.strip()
-            if not block:
-                continue
+        for block in abstract_chunks:
             p2 = document.add_paragraph()
-            p2.add_run(block)
-            style_body(p2)
+            _add_runs_chunked(p2, block)
+            style_abstract_body(p2)
             p2.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
     # --- Body: two columns; tables default to a single-column "island" to avoid splitting across columns ---
@@ -242,10 +332,11 @@ def build_document(data: dict) -> Document:
         if heading:
             _add_heading(document, str(heading))
         for para in sec.get("paragraphs") or []:
-            p = document.add_paragraph()
-            p.add_run(str(para))
-            style_body(p)
-            p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+            for block in _yaml_prose_paragraphs(str(para)):
+                p = document.add_paragraph()
+                _add_runs_chunked(p, block)
+                style_body(p)
+                p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
         tables = sec.get("tables") or []
         if tables:
@@ -259,22 +350,24 @@ def build_document(data: dict) -> Document:
 
     p = document.add_paragraph()
     p.add_run("AI Assistance Disclosure")
-    style_heading(p)
+    style_section_divider_heading(p)
 
-    disclosure = (data.get("ai_disclosure") or DEFAULT_AI_DISCLOSURE).strip()
-    p2 = document.add_paragraph()
-    p2.add_run(disclosure)
-    style_body(p2)
-    p2.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    disclosure_src = (data.get("ai_disclosure") or DEFAULT_AI_DISCLOSURE).strip()
+    disc_paras = _yaml_prose_paragraphs(disclosure_src)
+    for db in disc_paras:
+        p2 = document.add_paragraph()
+        _add_runs_chunked(p2, db)
+        style_body(p2)
+        p2.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
     refs = data.get("references") or []
     if refs:
         pr = document.add_paragraph()
         pr.add_run("References")
-        style_heading(pr)
+        style_section_divider_heading(pr)
         for ref in refs:
             rp = document.add_paragraph()
-            rp.add_run(str(ref))
+            _add_runs_chunked(rp, str(ref))
             style_reference(rp)
 
     return document
@@ -316,6 +409,13 @@ def mark_done(topic_dir: Path) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate research note DOCX (and optional PDF) from manuscript.yaml")
     parser.add_argument("--input", "-i", required=True, help="Path to topic folder under In Process")
+    parser.add_argument(
+        "--output-stem",
+        "-n",
+        default=None,
+        metavar="NAME",
+        help="Output file base name (no extension). Use when several folders share the same YAML title, or to avoid overwrites.",
+    )
     parser.add_argument("--pdf", action="store_true", help="Also export PDF via Microsoft Word (Windows)")
     parser.add_argument("--no-done", action="store_true", help="Do not write Done.txt in the topic folder")
     args = parser.parse_args()
@@ -330,21 +430,31 @@ def main() -> int:
     data = load_yaml(manuscript)
     doc = build_document(data)
 
-    published = root / "published"
-    published.mkdir(parents=True, exist_ok=True)
+    published = resolve_published_dir(root)
 
-    title_slug = _slug(str(data.get("title") if not isinstance(data.get("title"), list) else data["title"][0]))
-    base = f"{title_slug}_{data.get('date', '').replace(' ', '_')}"
+    if args.output_stem:
+        base = _slug(args.output_stem)
+    else:
+        yaml_stem = data.get("output_stem")
+        if yaml_stem:
+            base = _slug(str(yaml_stem))
+        else:
+            title_slug = _slug(str(data.get("title") if not isinstance(data.get("title"), list) else data["title"][0]))
+            base = f"{title_slug}_{data.get('date', '').replace(' ', '_')}"
     docx_name = f"{base}.docx"
-    docx_path = published / docx_name
+    docx_path = (published / docx_name).resolve()
 
     doc.save(str(docx_path))
-    print(f"Wrote {docx_path}")
+    print(f"Project root:  {root.resolve()}")
+    print(f"Manuscript:      {manuscript.resolve()}")
+    print(f"Wrote DOCX:      {docx_path}")
+    for msg in verify_docx_against_yaml(docx_path, data):
+        print(f"WARNING: {msg}", file=sys.stderr)
 
     if args.pdf:
-        pdf_path = published / f"{base}.pdf"
+        pdf_path = (published / f"{base}.pdf").resolve()
         export_pdf_word_win32(docx_path, pdf_path)
-        print(f"Wrote {pdf_path}")
+        print(f"Wrote PDF:       {pdf_path}")
 
     if not args.no_done:
         mark_done(topic_dir)

@@ -5,3 +5,7 @@ venv/
 .env
 .DS_Store
 Thumbs.db
+
+# Generated outputs (regenerate with generate_publication.py)
+Published/*.docx
+Published/*.pdf

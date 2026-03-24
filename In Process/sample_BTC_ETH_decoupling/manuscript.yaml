@@ -1,9 +1,23 @@
-# Copy/edit per topic. Required: title, author, affiliation, location, date, abstract, sections.
+# =============================================================================
+# manuscript.yaml — 使用说明（整理全文时请看）
+# =============================================================================
 #
-# Tables: default layout is full_page — each table sits in a short single-column section so Word does not
-# split the table across the two columns. To force a small table inside the two-column text, set:
-#   layout: narrow
-# Optional root default: default_table_layout: narrow
+# 1) 元信息：改 title / author / date 等即可。
+#
+# 2) 正文：每个 section 下 paragraphs 是一个「段落」列表；一段 = 列表里的一项。
+#    - 要加一段：在 paragraphs 里多写一条，用 | 或 > 包住文字。
+#    - abstract 用 | 多行折行时，生成器会把「软换行」合并成空格（避免 Word 里怪间距 / liquiditycycles 粘连）。
+#    - 要删一段：删掉对应列表项。
+#    - 长段落建议拆成多条（便于以后改句式、插表）。
+#
+# 3) 表格：放在某一节的 tables 下。多张表按顺序写；连续 full_page 表会排在同一单栏节。
+#    - 改列：改 headers 与各 row 的列数（列数须一致）。
+#
+# 4) 新加一节：复制一节整块，改 heading，填 paragraphs / tables。
+#
+# 5) 另起课题：复制本文件夹，改 YAML 文件名不必改（仍叫 manuscript.yaml），内容全换即可。
+#
+# =============================================================================
 
 title:
   - BTC–ETH Decoupling and the Rise of Ethereum as Productive Capital
@@ -18,35 +32,167 @@ abstract: |
   cycles and broad macro sentiment across digital assets. However, as market structure matures and Ethereum’s economic
   profile becomes more differentiated, this long-standing relationship may weaken. This research note evaluates the possibility
   of a partial BTC–ETH decoupling over the next 12–24 months using three lenses: rolling correlation, ETH/BTC relative-
-  strength behavior, and Ethereum’s transition toward productive digital capital.
+  strength behavior, and Ethereum’s transition toward productive digital capital. The note argues that a sustained decline in
+  rolling correlation—especially if the 60-day measure falls below 0.30—would indicate a meaningful structural divergence in
+  the dominant drivers of the two assets. It also outlines how staking yield, fee burn, settlement-layer utility, Layer-2 scaling,
+  and emerging AI-related on-chain activity could increase Ethereum’s independence from Bitcoin’s macro narrative.
 
 sections:
+  # ----- 第 1 节（可继续在 paragraphs 下追加条目） -----
   - heading: "1. Historical Correlation Structure"
     paragraphs:
       - >
         For much of the modern crypto cycle, BTC and ETH returns moved in close alignment. Market commentary and
         institutional research frequently described the pair as part of a single-beta crypto complex, particularly during 2017–2022
-        when both assets were dominated by the same liquidity regime and retail-risk appetite [1][2].
-    tables:
-      - caption: "Table 1. BTC–ETH Rolling Correlation Decoupling Framework"
-        headers: ["Indicator Type", "Rolling Window", "Interpretation", "Decoupling Trigger"]
-        rows:
-          - ["Short-term sensitivity", "20-day", "Detects fast shifts in co-movement", "< 0.20"]
-          - ["Medium-term confirmation", "60-day", "Filters short-lived noise", "< 0.30"]
-          - ["Long-term structural trend", "120-day", "Captures regime change", "< 0.40"]
-        note: "Table 1 summarizes the rolling-correlation framework used to assess whether BTC and ETH are moving from a shared-liquidity regime toward structurally differentiated behavior."
+        when both assets were dominated by the same liquidity regime and retail-risk appetite [1][2]. Reported rolling
+        correlations were often in the 0.65–0.90 range, reinforcing the practical assumption that ETH largely behaved as a
+        higher-beta extension of BTC rather than as a distinct macro or utility asset [1][3].
+      - >
+        That relationship, however, is not immutable. Correlation is a descriptive statistic rather than a permanent law. When
+        capital structure, regulation, technology, or value capture changes, historical co-movement can weaken. Coinbase
+        Institutional noted a period of lower BTC–ETH correlation after Ethereum’s Shapella era, highlighting that transition
+        events can temporarily introduce differentiated market behavior [2]. The central question is whether future divergence
+        will remain episodic or become structural.
+      - >
+        In portfolio analysis, correlations below 0.30 are often interpreted as weak enough to provide meaningful
+        diversification benefits, even if the threshold is heuristic rather than absolute. For this reason, a sustained decline in
+        the 20-day, 60-day, and 120-day rolling windows would matter more than a short-lived break in any single period. In
+        practical terms, 20-day correlation below 0.20 may serve as an early warning signal, 60-day correlation below 0.30 as
+        the main confirmation threshold, and 120-day correlation below 0.40 as evidence of a deeper regime shift.
 
+  # ----- 第 2 节 -----
   - heading: "2. ETH/BTC Relative Strength as a Pricing Mechanism"
     paragraphs:
       - >
         The ETH/BTC exchange rate is the market’s direct pricing mechanism for the relative economic value of the two
         networks. When ETH/BTC rises, the market is implicitly assigning greater value to Ethereum’s cash-flow-like,
-        utility-linked, or growth-linked characteristics relative to Bitcoin’s monetary narrative.
+        utility-linked, or growth-linked characteristics relative to Bitcoin’s monetary narrative. When it falls, the market
+        prefers Bitcoin’s scarcity and macro-hedge profile. In this sense, ETH/BTC is more informative than a simple
+        comparison of USD charts because it strips out a portion of the shared crypto beta [4].
+      - >
+        A useful framework is to interpret the ETH/BTC ratio in zones. Levels below 0.035 indicate continued structural
+        weakness in ETH relative to BTC. The 0.035–0.050 range reflects early recovery and sentiment stabilization. The
+        0.050–0.060 range is the most important transition zone because a sustained break there may trigger portfolio
+        rebalancing from a BTC-dominant stance toward a more balanced BTC–ETH allocation. Above 0.060, the market would
+        likely begin to treat ETH as a stronger independent driver of digital asset returns rather than a subordinate beta asset.
 
-# Optional override (defaults to standard disclosure matching your PDF)
+  # ----- 第 3 节 -----
+  - heading: "3. Ethereum as Productive Digital Capital"
+    paragraphs:
+      - >
+        The strongest argument for future decoupling is not technical but economic: Ethereum is gradually acquiring traits of
+        productive digital capital. First, ETH can generate native staking yield under Proof of Stake. This gives ETH a
+        cash-flow-like dimension absent from BTC. Second, EIP-1559 permanently burns part of transaction fees, tying token
+        supply dynamics to actual network usage. Third, Ethereum serves as the core settlement layer for stablecoins, DeFi,
+        tokenized assets, and programmable finance [5][6]. Together, these features make ETH increasingly resemble a hybrid
+        asset situated between digital commodity money, network equity, and productive infrastructure.
+      - >
+        This thesis does not imply that Bitcoin loses relevance. BTC remains the cleanest digital scarcity asset and an
+        increasingly institutionalized macro instrument. The point is narrower: as Ethereum’s value becomes more linked to
+        settlement demand, staking yield, and application-layer throughput, its return drivers may become less synchronized
+        with Bitcoin’s. The two assets could still rally or sell off together during major liquidity shocks, but outside such
+        periods their long-run behavior may begin to diverge.
+
+  # ----- 第 4 节 -----
+  - heading: "4. Layer-2 Expansion and Usage-Led Value Capture"
+    paragraphs:
+      - >
+        Layer-2 networks deepen this distinction. Ethereum’s scaling roadmap increasingly shifts user activity from the main
+        chain to rollups and other execution environments while preserving Ethereum as the settlement and security anchor. This
+        architecture allows total application-layer usage to expand without requiring all demand to be expressed directly on L1.
+        Industry dashboards and ecosystem research have shown persistent growth in Layer-2 throughput, total value locked,
+        and transaction share, reinforcing the idea that Ethereum’s ecosystem can grow even when BTC is not leading market
+        narrative [6][7].
+      - >
+        From a market-structure standpoint, this matters because usage-led ecosystems create endogenous demand. The more
+        stablecoin settlement, on-chain trading, tokenization, and application traffic accumulate around Ethereum, the more
+        ETH valuation may respond to internal network conditions rather than only to external liquidity cycles. That is the
+        essence of the productive-capital argument.
+
+  # ----- 第 5 节 -----
+  - heading: "5. AI, Agentic Finance, and Scenario Analysis"
+    paragraphs:
+      - >
+        A more speculative, but potentially important, driver is the emergence of autonomous software agents interacting with
+        on-chain systems. Standards such as the Model Context Protocol (MCP) are often discussed as interface layers that
+        could help AI systems connect to external tools and data [8]. If such standards gain meaningful adoption in blockchain
+        contexts, AI agents could become a new class of persistent users engaging in automated liquidity management, settlement
+        routing, staking optimization, or smart-contract-driven workflows [8][9].
+      - >
+        This is not yet a baseline assumption. It should be treated as a scenario variable, not as an established fact. Still,
+        even partial adoption could reinforce Ethereum’s role as programmable infrastructure. In that scenario, the key
+        indicators to monitor would not be narratives alone, but observable metrics: growth in on-chain autonomous transaction
+        share, activity on AI-linked tooling, and transaction demand associated with smart-contract-native automation.
+
+  # ----- 第 6 节 + 表格（与 PDF 一致：正文后接表 1–3；若要插在中间可把 tables 挪到对应 section） -----
+  - heading: "6. Investment Interpretation"
+    paragraphs:
+      - >
+        Under a decoupling framework, portfolio construction should move away from a single-beta view of crypto exposure. BTC
+        would remain the core macro and liquidity hedge, while ETH would increasingly represent exposure to productive digital
+        infrastructure. Additional satellite exposure—where appropriate—could focus on staking-linked assets, Layer-2
+        infrastructure, and high-utility protocols rather than on undifferentiated beta chasing. The central discipline,
+        however, is conditionality: the thesis strengthens only if correlation continues to weaken and ETH/BTC confirms a
+        relative-strength transition.
+    tables:
+      - caption: "Table 1. BTC–ETH Rolling Correlation Decoupling Framework"
+        headers:
+          - Indicator Type
+          - Rolling Window
+          - Interpretation
+          - Historical Regime
+          - Decoupling Trigger
+          - Research Use
+        rows:
+          - ["Short-term sensitivity", "20-day", "Detects fast shifts in co-movement", "0.45–0.70", "< 0.20", "Early warning"]
+          - ["Medium-term confirmation", "60-day", "Filters short-lived noise", "0.55–0.75", "< 0.30", "Main confirmation"]
+          - ["Long-term structural trend", "120-day", "Captures regime change in asset behavior", "0.65–0.82", "< 0.40", "Structural validation"]
+        note: >
+          Table 1 summarizes the rolling-correlation framework used to assess whether BTC and ETH are moving from a shared-
+          liquidity regime toward structurally differentiated behavior.
+
+      - caption: "Table 2. ETH/BTC Relative Strength and Allocation Trigger Zones"
+        headers:
+          - ETH/BTC Zone
+          - Interpretation
+          - Market Structure
+          - Likely Investor Behavior
+        rows:
+          - ["Below 0.035", "ETH remains structurally weak versus BTC", "BTC-dominant regime", "Defensive positioning"]
+          - ["0.035–0.050", "Early recovery / sentiment stabilization", "Repricing phase", "Tactical rotation begins"]
+          - ["0.050–0.060", "Critical momentum-flip zone", "Relative-strength transition", "Portfolio rebalancing into ETH"]
+          - ["Above 0.060", "Confirmed relative-strength regime", "ETH-led expansion", "Broader beta rotation into L2 / DeFi"]
+        note: >
+          Table 2 outlines the ETH/BTC exchange-rate zones that may matter most for relative-strength confirmation and allocation
+          behavior.
+
+      - caption: "Table 3. Structural Drivers of Ethereum Decoupling"
+        headers:
+          - Driver
+          - Mechanism
+          - Why It Matters for ETH
+          - Why It Differs from BTC
+        rows:
+          - ["Staking yield", "ETH generates native on-chain yield", "Adds bond-like and productive characteristics", "BTC does not natively yield"]
+          - ["Fee burn", "Usage-linked reduction in supply via EIP-1559", "Connects token value to network activity", "BTC supply path is fixed, not usage-linked"]
+          - ["Stablecoin settlement", "ETH as core transaction rail", "Supports utility-based demand", "BTC is not the dominant programmable settlement layer"]
+          - ["Layer-2 expansion", "Scales transaction throughput and application growth", "Increases network utilization and ecosystem depth", "BTC lacks comparable application-layer architecture"]
+          - ["AI / agentic interaction", "Potential autonomous on-chain demand", "May create non-human transactional usage", "More naturally aligned with smart-contract platforms"]
+        note: >
+          Table 3 presents the main structural drivers that could cause Ethereum to behave increasingly as productive digital
+          infrastructure rather than as a high-beta companion to Bitcoin.
+
+# 默认与正文一致的 AI 声明；若要改写可取消下面注释并编辑 ai_disclosure
 # ai_disclosure: |
-#   Custom text...
+#   …
 
 references:
   - '[1] "Price Correlation Between Major Cryptocurrencies and Memecoins (2019–2024)," Medium, accessed Mar. 6, 2026.'
   - '[2] Coinbase Institutional, "Lower BTC vs ETH correlation," Weekly Market Commentary, accessed Mar. 6, 2026.'
+  - '[3] BlackRock iShares, "Bitcoin Volatility Guide: Trends & Insights for Investors," accessed Mar. 6, 2026.'
+  - '[4] TradingView, "Bitcoin vs Ethereum Trade Ideas — VANTAGE:BTCETH," accessed Mar. 6, 2026.'
+  - '[5] Grayscale, "2026 Digital Asset Outlook: Dawn of the Institutional Era," accessed Mar. 6, 2026.'
+  - '[6] CoinMarketCap, "Live Cryptocurrency Charts & Market Data," accessed Mar. 6, 2026.'
+  - '[7] SQ Magazine, "Bitcoin vs. Ethereum Statistics 2026: What Wins Big?," accessed Mar. 6, 2026.'
+  - '[8] thirdweb, "The Model Context Protocol (MCP) & Its Significance for Blockchain Apps," accessed Mar. 6, 2026.'
+  - '[9] arXiv, "Model Context Contracts — MCP-Enabled Framework," accessed Mar. 6, 2026.'
