@@ -1,0 +1,10 @@
+.env
+venv/
+__pycache__/
+*.py[cod]
+*.db
+data/uploads/*
+data/formatted/*
+data/final_uploads/*
+data/logs/*
+!data/reference_samples/.gitkeep

@@ -1,0 +1,29 @@
+# 示例 systemd 单元：请勿直接覆盖系统已有服务文件。
+# 安装步骤（需 root）：
+#   1. 将项目放到 /opt/research_paper_portal（或自选目录）
+#   2. 创建专用用户: useradd -r -s /usr/sbin/nologin researchportal
+#   3. chown -R researchportal:researchportal /opt/research_paper_portal
+#   4. 复制本文件: cp research_paper_portal.service.example /etc/systemd/system/research-paper-portal.service
+#   5. 编辑 WorkingDirectory、EnvironmentFile、User
+#   6. systemctl daemon-reload && systemctl enable --now research-paper-portal
+
+[Unit]
+Description=Research Paper Portal (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=researchportal
+Group=researchportal
+WorkingDirectory=/opt/research_paper_portal
+EnvironmentFile=/opt/research_paper_portal/.env
+ExecStart=/opt/research_paper_portal/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8765
+Restart=on-failure
+RestartSec=5
+
+# 安全加固：禁止访问家目录外可写路径等（可按需调整）
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
